@@ -70,8 +70,14 @@ export const App: React.FC = () => {
     });
   }
 
-  function deletePost(todoId: number) {
+  function deleteTodo(todoId: number) {
     setErrorMessage('');
+
+    setTodos(currentTodos =>
+    currentTodos.map(todo =>
+      todo.id === todoId ? { ...todo, isLoading: true } : todo
+    )
+  );
 
     todoService
       .deleteTodos(todoId)
@@ -82,8 +88,59 @@ export const App: React.FC = () => {
       })
       .catch(() => {
         setErrorMessage('Unable to delete a todo');
-      });
+        setTodos(currentTodos =>
+        currentTodos.map(todo =>
+          todo.id === todoId ? { ...todo, isLoading: false } : todo
+        ))
+      }).finally(() => {
+      newTodoFieldRef.current?.focus();
+    });
   }
+
+  function clearCompleted() {
+  const completedTodos = todos.filter(todo => todo.completed);
+
+  if (completedTodos.length === 0) {
+    return;
+  }
+
+  setErrorMessage('');
+
+  const completedIds = completedTodos.map(todo => todo.id);
+  setTodos(currentTodos =>
+    currentTodos.map(todo =>
+      completedIds.includes(todo.id) ? { ...todo, isLoading: true } : todo
+    )
+  );
+
+  const deletePromises = completedTodos.map(todo =>
+    todoService
+      .deleteTodos(todo.id)
+      .then(() => todo.id)
+      .catch(() => null)
+  );
+
+  Promise.all(deletePromises)
+    .then(deletedIds => {
+      const successfullyDeleted = new Set(
+        deletedIds.filter((id): id is number => id !== null)
+      );
+
+      setTodos(currentTodos =>
+        currentTodos.filter(todo => !successfullyDeleted.has(todo.id))
+      );
+      if (successfullyDeleted.size < completedTodos.length) {
+        setErrorMessage('Unable to delete a todo');
+      }
+    })
+    .finally(() => {
+      setTodos(currentTodos =>
+        currentTodos.map(todo => ({ ...todo, isLoading: false }))
+      );
+      newTodoFieldRef.current?.focus();
+    });
+}
+
 
   useEffect(() => {
     if (!errorMessage) {
@@ -170,7 +227,7 @@ export const App: React.FC = () => {
           <>
             <TodoList
               todos={visibleTodos}
-              onDelete={deletePost}
+              onDelete={deleteTodo}
               tempTodo={tempTodo}
             />
 
@@ -187,6 +244,7 @@ export const App: React.FC = () => {
                 className="todoapp__clear-completed"
                 data-cy="ClearCompletedButton"
                 disabled={todos.length - activeTodosCount === 0}
+                onClick={clearCompleted}
               >
                 Clear completed
               </button>
