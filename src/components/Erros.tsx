@@ -17,6 +17,7 @@ export const ErrorNotification: React.FC<Props> = ({
       setMessageToDisplay(errorMessage);
     }
   }, [errorMessage]);
+
   return (
     <div
       data-cy="ErrorNotification"

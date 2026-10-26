@@ -32,9 +32,7 @@ export const App: React.FC = () => {
   const hasCompletedTodos = useMemo(() => {
     return todos.some(t => t.completed);
   }, [todos]);
-
   const allCompleted = todos.length > 0 && activeTodosCount === 0;
-  const isProcessingAnyTodo = processingTodoIds.length > 0;
 
   useEffect(() => {
     newTodoFieldRef.current?.focus();
@@ -42,7 +40,6 @@ export const App: React.FC = () => {
 
   function addTodo({ userId, title: todoTitle, completed }: Omit<Todo, 'id'>) {
     setErrorMessage('');
-    setProcessingTodoIds(current => [...current, 0]);
 
     setTempTodo({
       id: 0,
@@ -61,7 +58,6 @@ export const App: React.FC = () => {
         setErrorMessage('Unable to add a todo');
       })
       .finally(() => {
-        setProcessingTodoIds(current => current.filter(id => id !== 0));
         setTempTodo(null);
         setTimeout(() => {
           newTodoFieldRef.current?.focus();
@@ -91,12 +87,6 @@ export const App: React.FC = () => {
     setErrorMessage('');
     setProcessingTodoIds(currentIds => [...currentIds, todoId]);
 
-    setTodos(currentTodos =>
-      currentTodos.map(todo =>
-        todo.id === todoId ? { ...todo, isLoading: true } : todo,
-      ),
-    );
-
     todoService
       .deleteTodos(todoId)
       .then(() => {
@@ -106,11 +96,6 @@ export const App: React.FC = () => {
       })
       .catch(() => {
         setErrorMessage('Unable to delete a todo');
-        setTodos(currentTodos =>
-          currentTodos.map(todo =>
-            todo.id === todoId ? { ...todo, isLoading: false } : todo,
-          ),
-        );
       })
       .finally(() => {
         setProcessingTodoIds(currentIds =>
@@ -125,11 +110,14 @@ export const App: React.FC = () => {
   const clearCompleted = async () => {
     const completedTodos = todos.filter(todo => todo.completed);
 
-    if (completedTodos.length === 0) return;
+    if (completedTodos.length === 0) {
+      return;
+    }
 
     setErrorMessage('');
 
     const completedIds = completedTodos.map(todo => todo.id);
+
     setProcessingTodoIds(currentIds => [...currentIds, ...completedIds]);
 
     const results = await Promise.allSettled(
@@ -149,16 +137,16 @@ export const App: React.FC = () => {
     }
 
     setTodos(currentTodos =>
-      currentTodos.filter(todo => !successfullyDeletedIds.includes(todo.id))
+      currentTodos.filter(todo => !successfullyDeletedIds.includes(todo.id)),
     );
-    
-    setProcessingTodoIds(currentIds => 
-      currentIds.filter(id => !completedIds.includes(id))
+
+    setProcessingTodoIds(currentIds =>
+      currentIds.filter(id => !completedIds.includes(id)),
     );
 
     setTimeout(() => {
-          newTodoFieldRef.current?.focus();
-        }, 0);
+      newTodoFieldRef.current?.focus();
+    }, 0);
   };
 
   useEffect(() => {
@@ -204,7 +192,7 @@ export const App: React.FC = () => {
           newTodoFieldRef={newTodoFieldRef}
           title={title}
           setTitle={setTitle}
-          isAdding={isProcessingAnyTodo}
+          isAdding={!!tempTodo}
         />
 
         {(todos.length > 0 || tempTodo) && (
